@@ -2,13 +2,13 @@ from abc import ABC, abstractmethod
 
 import tensorflow as tf
 
-from tf_keras_vis.utils import listify
+from tf_keras_vis.utils import listify, is_channels_first
 
 
 class ModelVisualization(ABC):
     """Visualization class for Keras models.
     """
-    def __init__(self, model, model_modifier=None, clone=True):
+    def __init__(self, model, model_modifier=None, clone=True, data_format=None):
         """Create Visualization class instance that analize the model for debugging.
 
         # Arguments
@@ -19,6 +19,11 @@ class ModelVisualization(ABC):
                 ActivationMaximization normally, this function is used to replace the softmax
                 function that was applied to the model outputs.
             clone: A bool. If you won't model to be copied, you can set this option to False.
+            data_format: A `str` instance among 'channels_first' or
+                'channels_last', the default is None which means the data
+                format of all the inputs is `channels_last`. If your model has
+                more than one input, you can pass a list of data format. For
+                example, `data_format=['channels_first', 'channels_last']`.
         """
         if clone:
             self.model = tf.keras.models.clone_model(model)
@@ -29,6 +34,26 @@ class ModelVisualization(ABC):
             new_model = model_modifier(self.model)
             if new_model is not None:
                 self.model = new_model
+        # Determines the data format of the model
+        if data_format is None and len(self.model.inputs) == 1:
+            if is_channels_first(self.model):
+                self.data_format = ['channels_first']
+            else:
+                self.data_format = ['channels_last']
+        elif data_format is None:  # the default is 'channels_last'
+            self.data_format = ['channels_last'] * len(self.model.inputs)
+        else:
+            data_format = listify(data_format)
+            for i, df in enumerate(data_format):
+                if df.lower() in ['channels_first', 'channel_first',
+                                  'channels first', 'channel first']:
+                    data_format[i] = 'channels_first'
+                elif df.lower() in ['channels_last', 'channel_last',
+                                    'channels last', 'channel last']:
+                    data_format[i] = 'channels_last'
+                else:
+                    raise ValueError('the given parameter `data_format` has '
+                                     f'invalid value `{df}` at position {i}.')
 
     @abstractmethod
     def __call__(self):

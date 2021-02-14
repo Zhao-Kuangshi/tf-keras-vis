@@ -82,7 +82,8 @@ class ActivationMaximization(ModelVisualization):
             # Apply input modifiers
             for j, name in enumerate(self.model.input_names):
                 for modifier in input_modifiers[name]:
-                    seed_inputs[j] = modifier(seed_inputs[j])
+                    seed_inputs[j] = modifier(seed_inputs[j],
+                                              self.data_format[j])
 
             seed_inputs = [tf.Variable(X) for X in seed_inputs]
             # Calculate gradients

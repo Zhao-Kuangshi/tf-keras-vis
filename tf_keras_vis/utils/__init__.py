@@ -83,6 +83,24 @@ def find_layer(model, condition, offset=None, reverse=True):
                 return result
     return None
 
+def is_channels_first(model):
+    """
+    Determines whether the data format of a model is `channels_first`.
+    
+    # Arguments
+        model: 
+    # Returns
+        A bool. `True` means it is a channels_first model.
+    """
+    for layer in model.layers:
+        if hasattr(layer, 'data_format'):
+            if layer.data_format == 'channels_first':
+                return True
+            elif layer.data_format == 'channels_last':
+                return False
+            else:
+                pass
+    return False  # No information about channel_axis provided by the input model
 
 def zoom_factor(from_shape, to_shape):
     return tuple(t / f for f, t in iter(zip(from_shape, to_shape)))

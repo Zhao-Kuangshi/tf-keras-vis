@@ -34,14 +34,23 @@ class Jitter(InputModifier):
         self.jitter = None
         self._jitter = jitter
 
-    def __call__(self, seed_input):
-        if self.jitter is None:
-            self.jitter = [
-                dim * self._jitter if self._jitter < 1. else self._jitter
-                for dim in seed_input.shape[1:-1]
-            ]
-        return tf.roll(seed_input, [np.random.randint(-j, j + 1) for j in self.jitter],
-                       tuple(range(len(seed_input.shape))[1:-1]))
+    def __call__(self, seed_input, data_format='channels_last'):
+        if data_format == 'channels_last':
+            if self.jitter is None:
+                self.jitter = [
+                    dim * self._jitter if self._jitter < 1. else self._jitter
+                    for dim in seed_input.shape[1:-1]
+                ]
+            return tf.roll(seed_input, [np.random.randint(-j, j + 1) for j in self.jitter],
+                           tuple(range(len(seed_input.shape))[1:-1]))
+        elif data_format == 'channels_first':
+            if self.jitter is None:
+                self.jitter = [
+                    dim * self._jitter if self._jitter < 1. else self._jitter
+                    for dim in seed_input.shape[2:]
+                ]
+            return tf.roll(seed_input, [np.random.randint(-j, j + 1) for j in self.jitter],
+                           tuple(range(len(seed_input.shape))[2:]))
 
 
 class Rotate(InputModifier):
@@ -54,10 +63,18 @@ class Rotate(InputModifier):
         """
         self.rg = degree
 
-    def __call__(self, seed_input):
-        if tf.is_tensor(seed_input):
-            seed_input = seed_input.numpy()
-        seed_input = np.array([
-            random_rotation(x, self.rg, row_axis=0, col_axis=1, channel_axis=2) for x in seed_input
-        ])
-        return tf.constant(seed_input)
+    def __call__(self, seed_input, data_format='channels_last'):
+        if data_format == 'channels_last':
+            if tf.is_tensor(seed_input):
+                seed_input = seed_input.numpy()
+            seed_input = np.array([
+                random_rotation(x, self.rg, row_axis=0, col_axis=1, channel_axis=2) for x in seed_input
+            ])
+            return tf.constant(seed_input)
+        elif data_format == 'channels_first':
+            if tf.is_tensor(seed_input):
+                seed_input = seed_input.numpy()
+            seed_input = np.array([
+                random_rotation(x, self.rg, row_axis=1, col_axis=2, channel_axis=0) for x in seed_input
+            ])
+            return tf.constant(seed_input)
