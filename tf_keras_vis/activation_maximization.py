@@ -111,9 +111,16 @@ class ActivationMaximization(ModelVisualization):
                 grads = (gradient_modifier(g) for g in grads)
             if normalize_gradient:
                 # normalizing gradients by dividing their root-mean-square in each batch
-                grads = (tf.divide(g, tf.sqrt(tf.reduce_mean(tf.square(g),
-                                                            axis=tuple(range(len(g.shape))[1:]),
-                                                            keepdims=True)))for g in grads)
+                grads = (tf.divide(g,
+                                   tf.maximum(
+                                       tf.sqrt(
+                                           tf.reduce_mean(tf.square(g),
+                                                          axis=tuple(range(len(g.shape))[1:]),
+                                                          keepdims=True)
+                                           ),
+                                       1e-12))
+                         for g in grads)
+                # the `tf.maximum()` is to avoid dividing by 0.
                 # grads = (K.l2_normalize(g, axis=tuple(range(len(g))[1:])) for g in grads)
             optimizer.apply_gradients(zip(grads, seed_inputs))
 
