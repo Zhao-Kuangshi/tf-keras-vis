@@ -125,3 +125,21 @@ class Normalize(InputModifier):
                     signal = diff / max([np.square(diff).mean(), 1e-12]) + self.loc
                     seed_input[b, c] = signal  
         return tf.constant(seed_input)
+
+
+class Clip(InputModifier):
+    def __init__(self, input_range=(0, 255)):
+        """Implements an input modifier that clip the input out of
+        `input_range` every step. It will not change the scale of the input.
+        
+        # Arguments:
+            input_range: A tuple. Limit the input range.
+        """
+        self.min_lim = input_range[0]
+        self.max_lim = input_range[1]
+
+    def __call__(self, seed_input, data_format='channels_last'):
+        if tf.is_tensor(seed_input):
+            seed_input = seed_input.numpy()
+        seed_input = seed_input.clip(self.min_lim, self.max_lim)
+        return tf.constant(seed_input)
