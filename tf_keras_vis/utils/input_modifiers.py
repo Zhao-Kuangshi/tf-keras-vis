@@ -86,3 +86,42 @@ class Rotate(InputModifier):
             ])
             return tf.constant(seed_input)
         raise ValueError('Invalid data_format parameter.')
+
+
+class Normalize(InputModifier):
+    def __init__(self, loc=0, scale=1):
+        """Implements an input modifier that normalize the input to a certain
+        scale. Each channel will be independently normalized.
+        
+        Using this modifier means that you think the seed input should follow
+        the normal distribution and eventually return to the mean value.
+        
+        Use `Clip` or `Zoom` if you just want to limit the size of the seed
+        input.
+        
+        # Arguments:
+            loc: The mean of the returned input. (Default value: 0)
+            scale: The varience of the returned input. (Default value: 1)
+        """
+        self.loc = loc
+        self.scale = scale
+
+    def __call__(self, seed_input, data_format='channels_last'):
+        if tf.is_tensor(seed_input):
+            seed_input = seed_input.numpy()
+        for b in range(len(seed_input)):
+            if data_format == 'channels_last':
+                n_channels = seed_input.shape[-1]
+                for c in range(n_channels):
+                    signal = seed_input[b, ..., c]  # signal of one channel
+                    diff = signal - signal.mean()
+                    signal = diff / max([np.square(diff).mean(), 1e-12]) + self.loc
+                    seed_input[b, ..., c] = signal
+            elif data_format == 'channels_first':
+                n_channels = seed_input.shape[1]
+                for c in range(n_channels):
+                    signal = seed_input[b, c]  # signal of one channel
+                    diff = signal - signal.mean()
+                    signal = diff / max([np.square(diff).mean(), 1e-12]) + self.loc
+                    seed_input[b, c] = signal  
+        return tf.constant(seed_input)
