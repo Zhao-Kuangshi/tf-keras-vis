@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import logging
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import random_rotation
@@ -64,6 +65,12 @@ class Rotate(InputModifier):
         self.rg = degree
 
     def __call__(self, seed_input, data_format='channels_last'):
+        if len(seed_input.shape) != 4:  # the seed_input is not 2D image
+            logging.warning('The input modifier `Rotate` is only valid for 2D '
+                            'images. You have seed_input with shape '
+                            f'{tuple(seed_input.shape)}, this input will not '
+                            'be modified.')
+            return seed_input
         if data_format == 'channels_last':
             if tf.is_tensor(seed_input):
                 seed_input = seed_input.numpy()
@@ -71,10 +78,11 @@ class Rotate(InputModifier):
                 random_rotation(x, self.rg, row_axis=0, col_axis=1, channel_axis=2) for x in seed_input
             ])
             return tf.constant(seed_input)
-        elif data_format == 'channels_first':
+        if data_format == 'channels_first':
             if tf.is_tensor(seed_input):
                 seed_input = seed_input.numpy()
             seed_input = np.array([
                 random_rotation(x, self.rg, row_axis=1, col_axis=2, channel_axis=0) for x in seed_input
             ])
             return tf.constant(seed_input)
+        raise ValueError('Invalid data_format parameter.')
