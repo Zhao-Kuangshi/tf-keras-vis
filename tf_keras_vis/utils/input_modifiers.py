@@ -143,3 +143,51 @@ class Clip(InputModifier):
             seed_input = seed_input.numpy()
         seed_input = seed_input.clip(self.min_lim, self.max_lim)
         return tf.constant(seed_input)
+    
+
+class Zoom(InputModifier):
+    def __init__(self, input_range=(0, 255)):
+        """Implements an input modifier that zoom the input to `input_range`
+        every step. It will change the scale of the input. Each channel will be
+        independently zoomed.
+        
+        # Arguments:
+            input_range: A tuple. Limit the input range.
+        """
+        self.min_lim = input_range[0]
+        self.max_lim = input_range[1]
+        self.mid_lim = (self.min_lim + self.max_lim) / 2
+
+    def __call__(self, seed_input, data_format='channels_last'):
+        if tf.is_tensor(seed_input):
+            seed_input = seed_input.numpy()
+        for b in range(len(seed_input)):
+            if data_format == 'channels_last':
+                n_channels = seed_input.shape[-1]
+                for c in range(n_channels):
+                    signal = seed_input[b, ..., c]  # signal of one channel
+                    min_ori = signal.min()  # minimum in original signal
+                    max_ori = signal.max()  # maximum in original signal
+                    mid_ori = (min_ori + max_ori) / 2
+                    if max_ori - mid_ori != 0:
+                        scale = max_ori - mid_ori
+                    else:
+                        scale = 1
+                    zoom = (self.max_lim - self.mid_lim) / scale
+                    signal = (signal - mid_ori) * zoom + self.mid_lim
+                    seed_input[b, ..., c] = signal
+            elif data_format == 'channels_first':
+                n_channels = seed_input.shape[1]
+                for c in range(n_channels):
+                    signal = seed_input[b, c]  # signal of one channel
+                    min_ori = signal.min()  # minimum in original signal
+                    max_ori = signal.max()  # maximum in original signal
+                    mid_ori = (min_ori + max_ori) / 2
+                    if max_ori - mid_ori != 0:
+                        scale = max_ori - mid_ori
+                    else:
+                        scale = 1
+                    zoom = (self.max_lim - self.mid_lim) / scale
+                    signal = (signal - mid_ori) * zoom + self.mid_lim
+                    seed_input[b, c] = signal  
+        return tf.constant(seed_input)
